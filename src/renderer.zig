@@ -1167,7 +1167,62 @@ pub const mesh_selection = struct { // MARK: mesh_selection
 		}
 	}
 
+	/// Like updateBlockAndSendUpdate, but with a fixed drop location, because there is no selected block.
+	fn updateBlockForRadiusBreak(source: main.items.Inventory.ClientInventory, slot: u32, pos: Vec3i, oldBlock: blocks.Block, newBlock: blocks.Block) void {
+		main.sync.client.executeCommand(.{
+			.updateBlock = .{
+				.source = .{.inv = source.super, .slot = slot},
+				.dropLocation = .{
+					.worldPos = pos,
+					.normalDir = Vec3f{0, 0, 1},
+					.min = Vec3f{0, 0, 0},
+					.max = Vec3f{1, 1, 1},
+				},
+				.oldBlock = oldBlock,
+				.newBlock = newBlock,
+			},
+		});
+		mesh_storage.updateBlock(.{.pos = pos, .newBlock = newBlock, .blockEntityData = &.{}});
+	}
+
+	/// Hack: breaks every block within a sphere around the player.
+	fn radiusBreak(inventory: main.items.Inventory.ClientInventory, slot: u32) void {
+		const hack = main.hack_client;
+		const item = inventory.getStack(slot).item;
+		if (item == .baseItem and std.mem.eql(u8, item.baseItem.id(), "cubyz:selection_wand")) return;
+
+		const radius: i32 = hack.breakRadius;
+		const center: Vec3d = main.game.player.getPosBlocking() + main.game.player.outerBoundingBox.center();
+		const centerBlock: Vec3i = @floor(center);
+		var broken: u32 = 0;
+
+		var dx: i32 = -radius;
+		while (dx <= radius) : (dx += 1) {
+			var dy: i32 = -radius;
+			while (dy <= radius) : (dy += 1) {
+				var dz: i32 = -radius;
+				while (dz <= radius) : (dz += 1) {
+					if (dx*dx + dy*dy + dz*dz > radius*radius) continue;
+					const pos = centerBlock + Vec3i{dx, dy, dz};
+					const block = mesh_storage.getBlockFromRenderThread(pos[0], pos[1], pos[2]) orelse continue;
+					if (block.typ == 0 or block.hasTag(.air) or block.hasTag(.fluid)) continue;
+
+					const relPos: Vec3f = @floatCast(center - @as(Vec3d, @floatFromInt(pos)));
+					var newBlock = block;
+					block.mode().onBlockBreaking(item, relPos, lastDir, &newBlock);
+					if (newBlock == block) continue;
+
+					updateBlockForRadiusBreak(inventory, slot, pos, block, newBlock);
+					broken += 1;
+					if (broken >= hack.maxBlocksPerFrame) return;
+				}
+			}
+		}
+	}
+
 	pub fn breakBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64) void {
+		if (main.hack_client.radiusBreak) radiusBreak(inventory, slot);
+
 		const swinging = main.entity.components.@"cubyz:swinging".client.get(main.game.player.id) orelse blk: {
 			main.entity.components.@"cubyz:swinging".client.put(main.game.player.id);
 			break :blk main.entity.components.@"cubyz:swinging".client.get(main.game.player.id).?;

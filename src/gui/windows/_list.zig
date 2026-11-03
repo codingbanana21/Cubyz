@@ -46,3 +46,4 @@ pub const @"authentication/encrypt_with_password" = @import("authentication/encr
 pub const @"authentication/login" = @import("authentication/login.zig");
 pub const @"authentication/stay_logged_in" = @import("authentication/stay_logged_in.zig");
 pub const @"authentication/unlock" = @import("authentication/unlock.zig");
+pub const hack_menu = @import("hack_menu.zig");

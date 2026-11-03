@@ -20,6 +20,7 @@ pub const files = @import("files.zig");
 pub const fmt = @import("fmt.zig");
 pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
+pub const hack_client = @import("hack_client.zig");
 pub const itemdrop = @import("itemdrop.zig");
 pub const items = @import("items.zig");
 pub const log = @import("log.zig");
@@ -181,6 +182,7 @@ fn setHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 pub const keyboard = struct { // MARK: keyboard
 	pub var keys = [_]Window.Key{
 		// Gameplay:
+		.{.name = "hackMenu", .key = c.GLFW_KEY_P, .pressAction = &hack_client.toggleMenu},
 		.{.name = "forward", .key = c.GLFW_KEY_W, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
 		.{.name = "left", .key = c.GLFW_KEY_A, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}},
 		.{.name = "backward", .key = c.GLFW_KEY_S, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = true}},

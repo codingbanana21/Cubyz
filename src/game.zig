@@ -26,6 +26,7 @@ const settings = @import("settings.zig");
 const Block = main.blocks.Block;
 const physics = main.physics;
 const keyboard = main.keyboard;
+const hack_client = main.hack_client;
 
 pub const camera = struct { // MARK: camera
 	pub var rotation: Vec3f = Vec3f{0, 0, 0};
@@ -221,7 +222,7 @@ pub const player = struct { // MARK: player
 	}
 
 	pub fn breakBlock(deltaTime: f64) void {
-		inventory.breakBlock(selectedSlot, deltaTime);
+		inventory.breakBlock(selectedSlot, if (hack_client.instantBreak) deltaTime*hack_client.instantBreakFactor else deltaTime);
 	}
 
 	pub fn acquireSelectedBlock() void {
@@ -620,6 +621,7 @@ pub fn getBlockWithSide(comptime side: main.sync.Side, x: i32, y: i32, z: i32) ?
 }
 
 pub fn update(deltaTime: f64) void { // MARK: update()
+   	hack_client.applyFly();
 	if (world.?.shouldRestart.load(.acquire)) {
 		restart();
 	}
@@ -636,7 +638,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		physics.calculateFriction(.client, &player.volumeProperties, &player.friction, player.super.pos, player.outerBoundingBox, player.onGround);
 	}
 	var acc = Vec3d{0, 0, 0};
-	const speedMultiplier: f32 = if (player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
+   	const baseSpeedMultiplier: f32 = if (player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
+   	const speedMultiplier: f32 = baseSpeedMultiplier*hack_client.speedMultiplier;
 
 	const density = if (player.isFlying.load(.monotonic)) 0.0 else player.volumeProperties.density;
 	const maxDensity = if (player.isFlying.load(.monotonic)) 0.0 else player.volumeProperties.maxDensity;
@@ -799,7 +802,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	}
 
 	const gravity: f64 = if (player.isFlying.load(.monotonic)) 0.0 else physics.baseGravity;
-	const jumpHeight: f64 = if (jumping) player.jumpHeight else 0.0;
+   	const baseJumpHeight: f64 = if (jumping) player.jumpHeight else 0.0;
+   	const jumpHeight: f64 = baseJumpHeight*hack_client.jumpMultiplier;
 	var motion = physics.calculateMotion(.client, deltaTime, player.friction, player.volumeProperties, physics.playerDensity, player.super.pos, &player.super.vel, acc, gravity, jumpHeight);
 
 	{
